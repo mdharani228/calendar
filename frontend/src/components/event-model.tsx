@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { X, Save, Trash2, Calendar, Clock, Palette } from "lucide-react"
 import type { Event } from "./types"
@@ -17,7 +16,22 @@ interface EventModalProps {
 
 const eventColors = ["#3b82f6", "#ef4444", "#10b981", "#8b5cf6", "#f59e0b", "#06b6d4", "#ec4899", "#84cc16"]
 
-export default function EventModal({ isOpen, event, defaultDate, onClose, onSave, onDelete }: EventModalProps) {
+// ✅ Fix: Format date string in local timezone
+const formatDateForInput = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+export default function EventModal({
+  isOpen,
+  event,
+  defaultDate,
+  onClose,
+  onSave,
+  onDelete,
+}: EventModalProps) {
   const [formData, setFormData] = useState({
     title: "",
     date: "",
@@ -39,9 +53,10 @@ export default function EventModal({ isOpen, event, defaultDate, onClose, onSave
           description: event.description || "",
         })
       } else {
+        // ✅ Updated to use local date formatting
         const defaultDateString = defaultDate
-          ? defaultDate.toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0]
+          ? formatDateForInput(defaultDate)
+          : formatDateForInput(new Date())
 
         setFormData({
           title: "",

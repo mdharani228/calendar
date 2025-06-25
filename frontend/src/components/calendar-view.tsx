@@ -17,6 +17,14 @@ interface CalendarViewProps {
   setViewType: (viewType: CalendarViewType) => void
 }
 
+// ✅ Local date formatter (avoids UTC shifting)
+const formatDate = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 export default function CalendarView({
   currentDate,
   setCurrentDate,
@@ -32,35 +40,35 @@ export default function CalendarView({
   const today = new Date()
 
   const navigateDate = (direction: "prev" | "next") => {
-   setCurrentDate((prev: Date) => {
-  const newDate = new Date(prev)
-  switch (viewType) {
-    case "year":
-      newDate.setFullYear(prev.getFullYear() + (direction === "next" ? 1 : -1))
-      break
-    case "month":
-      newDate.setMonth(prev.getMonth() + (direction === "next" ? 1 : -1))
-      break
-    case "week":
-      newDate.setDate(prev.getDate() + (direction === "next" ? 7 : -7))
-      break
-    case "day":
-      newDate.setDate(prev.getDate() + (direction === "next" ? 1 : -1))
-      break
+    setCurrentDate((prev: Date) => {
+      const newDate = new Date(prev)
+      switch (viewType) {
+        case "year":
+          newDate.setFullYear(prev.getFullYear() + (direction === "next" ? 1 : -1))
+          break
+        case "month":
+          newDate.setMonth(prev.getMonth() + (direction === "next" ? 1 : -1))
+          break
+        case "week":
+          newDate.setDate(prev.getDate() + (direction === "next" ? 7 : -7))
+          break
+        case "day":
+          newDate.setDate(prev.getDate() + (direction === "next" ? 1 : -1))
+          break
+      }
+      return newDate
+    })
   }
-  return newDate
-})
 
-  }
-
+  // ✅ Use formatted date instead of toISOString
   const getEventsForDate = (date: Date): Event[] => {
-    const dateString = date.toISOString().split("T")[0]
+    const dateString = formatDate(date)
     return events.filter((event) => event.date === dateString)
   }
 
   const checkEventConflicts = (dateEvents: Event[]): Event[] => {
-    return dateEvents.filter((event, index) => {
-      return dateEvents.some((otherEvent, otherIndex) => {
+    return dateEvents.filter((event, index) =>
+      dateEvents.some((otherEvent, otherIndex) => {
         if (index >= otherIndex) return false
         const eventStart = new Date(`2000-01-01T${event.startTime}:00`)
         const eventEnd = new Date(`2000-01-01T${event.endTime}:00`)
@@ -68,91 +76,81 @@ export default function CalendarView({
         const otherEnd = new Date(`2000-01-01T${otherEvent.endTime}:00`)
         return eventStart < otherEnd && eventEnd > otherStart
       })
-    })
+    )
   }
 
   const renderMonthView = () => {
     const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
     ]
     const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
-      const currentMonth = currentDate.getMonth()
-  const currentYear = currentDate.getFullYear()
-  const firstDayOfMonth = new Date(currentYear, currentMonth, 1)
-  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0)
-  const firstDayWeekday = firstDayOfMonth.getDay()
-  const daysInMonth = lastDayOfMonth.getDate()
-  const days: React.JSX.Element[] = []
+    const currentMonth = currentDate.getMonth()
+    const currentYear = currentDate.getFullYear()
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1)
+    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0)
+    const firstDayWeekday = firstDayOfMonth.getDay()
+    const daysInMonth = lastDayOfMonth.getDate()
 
+    const days: React.JSX.Element[] = []
 
-  // Empty cells
-  for (let i = 0; i < firstDayWeekday; i++) {
-    days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>)
-  }
+    for (let i = 0; i < firstDayWeekday; i++) {
+      days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>)
+    }
 
-  // Days of month
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(currentYear, currentMonth, day)
-    const dateEvents = getEventsForDate(date)
-    const conflictingEvents = checkEventConflicts(dateEvents)
-    const isToday = date.toDateString() === today.toDateString()
-    const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString()
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(currentYear, currentMonth, day)
+      const dateEvents = getEventsForDate(date)
+      const conflictingEvents = checkEventConflicts(dateEvents)
+      const isToday = formatDate(date) === formatDate(today)
+      const isSelected = selectedDate && formatDate(date) === formatDate(selectedDate)
 
-    days.push(
-      <div
-        key={day}
-        className={`calendar-day ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}
-        onClick={() => {
-          onDateClick(date)
-          setSelectedDate(date)
-        }}
-      >
-        <div className="day-header">
-          <span className="day-number">{day}</span>
-          <button
-            className="add-event-quick"
-            onClick={(e) => {
-              e.stopPropagation()
-              onAddEvent(date)
-            }}
-          >
-            <Plus size={12} />
-          </button>
-        </div>
-
-        <div className="events-container">
-          {dateEvents.slice(0, 3).map((event) => (
-            <div
-              key={event.id}
-              className={`event ${conflictingEvents.includes(event) ? "conflict" : ""}`}
-              style={{ backgroundColor: event.color }}
+      days.push(
+        <div
+          key={day}
+          className={`calendar-day ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}
+          onClick={() => {
+            const clickedDate = new Date(currentYear, currentMonth, day)
+            onDateClick(clickedDate)
+            setSelectedDate(clickedDate)
+          }}
+        >
+          <div className="day-header">
+            <span className="day-number">{day}</span>
+            <button
+              className="add-event-quick"
               onClick={(e) => {
                 e.stopPropagation()
-                onEventClick(event)
+                onAddEvent(new Date(currentYear, currentMonth, day))
               }}
-              title={`${event.title} (${event.startTime} - ${event.endTime})`}
             >
-              <span className="event-title">{event.title}</span>
-              {conflictingEvents.includes(event) && <AlertCircle className="conflict-icon" size={10} />}
-            </div>
-          ))}
-          {dateEvents.length > 3 && <div className="more-events">+{dateEvents.length - 3} more</div>}
+              <Plus size={12} />
+            </button>
+          </div>
+          <div className="events-container">
+            {dateEvents.slice(0, 3).map((event) => (
+              <div
+                key={event.id}
+                className={`event ${conflictingEvents.includes(event) ? "conflict" : ""}`}
+                style={{ backgroundColor: event.color }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEventClick(event)
+                }}
+                title={`${event.title} (${event.startTime} - ${event.endTime})`}
+              >
+                <span className="event-title">{event.title}</span>
+                {conflictingEvents.includes(event) && <AlertCircle className="conflict-icon" size={10} />}
+              </div>
+            ))}
+            {dateEvents.length > 3 && (
+              <div className="more-events">+{dateEvents.length - 3} more</div>
+            )}
+          </div>
         </div>
-      </div>
-    )
-  }
+      )
+    }
 
     return (
       <div className="month-view">
@@ -186,12 +184,11 @@ export default function CalendarView({
     const startOfWeek = new Date(currentDate)
     startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
 
-    const weekDays: Date[] = []
-    for (let i = 0; i < 7; i++) {
+    const weekDays = Array.from({ length: 7 }, (_, i) => {
       const date = new Date(startOfWeek)
       date.setDate(startOfWeek.getDate() + i)
-      weekDays.push(date)
-    }
+      return date
+    })
 
     return (
       <div className="week-view">
@@ -210,16 +207,17 @@ export default function CalendarView({
         <div className="week-grid">
           {weekDays.map((date, index) => {
             const dateEvents = getEventsForDate(date)
-            const isToday = date.toDateString() === today.toDateString()
-            const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString()
+            const isToday = formatDate(date) === formatDate(today)
+            const isSelected = selectedDate && formatDate(date) === formatDate(selectedDate)
 
             return (
               <div
                 key={index}
                 className={`week-day ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}
                 onClick={() => {
-                  onDateClick(date)
-                  setSelectedDate(date)
+                  const clickedDate = new Date(date)
+                  onDateClick(clickedDate)
+                  setSelectedDate(clickedDate)
                 }}
               >
                 <div className="week-day-header">
@@ -252,7 +250,6 @@ export default function CalendarView({
 
   const renderDayView = () => {
     const dayEvents = getEventsForDate(currentDate)
-    const isToday = currentDate.toDateString() === today.toDateString()
 
     return (
       <div className="day-view">
@@ -278,7 +275,7 @@ export default function CalendarView({
             {dayEvents.length === 0 ? (
               <div className="no-events">
                 <p>No events scheduled for this day</p>
-                <button className="add-event-btn" onClick={() => onAddEvent(currentDate)}>
+                <button className="add-event-btn" onClick={() => onAddEvent(new Date(currentDate))}>
                   <Plus size={16} />
                   Add Event
                 </button>
@@ -306,7 +303,7 @@ export default function CalendarView({
   }
 
   const renderYearView = () => {
-   const months = [] as React.ReactNode[]
+    const months: React.ReactNode[] = []
     const year = currentDate.getFullYear()
 
     for (let month = 0; month < 12; month++) {
@@ -327,7 +324,7 @@ export default function CalendarView({
         >
           <h3 className="month-name">{monthDate.toLocaleDateString("en", { month: "long" })}</h3>
           <div className="month-events-count">{monthEvents.length} events</div>
-        </div>,
+        </div>
       )
     }
 

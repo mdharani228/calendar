@@ -5,8 +5,8 @@ import Header from "./header"
 import Sidebar from "./sidebar"
 import CalendarView from "./calendar-view"
 import EventModal from "./event-model"
-import "./calendar-app.css"
 import type { Event, CalendarViewType } from "./types"
+import "./calendar-app.css"
 
 const initialEvents: Event[] = [
   {
@@ -52,20 +52,20 @@ const initialEvents: Event[] = [
 ]
 
 export default function CalendarApp() {
-  const [currentDate, setCurrentDate] = useState<Date>(new Date())
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
-  const [events, setEvents] = useState<Event[]>([]) // ✅ Type added
-  const [viewType, setViewType] = useState<CalendarViewType>("month") // ✅ Type added
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true)
-  const [darkMode, setDarkMode] = useState<boolean>(false)
+  const [events, setEvents] = useState<Event[]>([])
+  const [viewType, setViewType] = useState<CalendarViewType>("month")
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [darkMode, setDarkMode] = useState(false)
   const [eventModal, setEventModal] = useState<{
     isOpen: boolean
     event?: Event
     date?: Date
   }>({ isOpen: false })
-  const [searchTerm, setSearchTerm] = useState<string>("")
+  const [searchTerm, setSearchTerm] = useState("")
 
-  // Load events from localStorage on mount
+  // Load from localStorage
   useEffect(() => {
     const savedEvents = localStorage.getItem("calendar-events")
     if (savedEvents) {
@@ -81,7 +81,7 @@ export default function CalendarApp() {
     }
   }, [])
 
-  // Save events to localStorage whenever events change
+  // Save to localStorage
   useEffect(() => {
     localStorage.setItem("calendar-events", JSON.stringify(events))
   }, [events])
@@ -122,6 +122,19 @@ export default function CalendarApp() {
       event.description?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  // ✅ Updated formatDate function
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
+  const getEventsForDate = (date: Date): Event[] => {
+    const dateString = formatDate(date)
+    return filteredEvents.filter((event) => event.date === dateString)
+  }
+
   return (
     <div className={`calendar-app ${darkMode ? "dark" : "light"}`}>
       <Header
@@ -147,18 +160,17 @@ export default function CalendarApp() {
         />
 
         <CalendarView
-  currentDate={currentDate}
-  setCurrentDate={setCurrentDate}
-  selectedDate={selectedDate}
-  setSelectedDate={setSelectedDate}
-  events={filteredEvents}
-  viewType={viewType}
-  setViewType={setViewType} // ✅ Add this line
-  onDateClick={(date) => setSelectedDate(date)}
-  onEventClick={(event) => openEventModal(event)}
-  onAddEvent={(date) => openEventModal(undefined, date)}
-/>
-
+          currentDate={currentDate}
+          setCurrentDate={setCurrentDate}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          events={filteredEvents}
+          viewType={viewType}
+          setViewType={setViewType}
+          onDateClick={(date) => setSelectedDate(date)}
+          onEventClick={(event) => openEventModal(event)}
+          onAddEvent={(date) => openEventModal(undefined, date)}
+        />
       </div>
 
       <EventModal
@@ -166,14 +178,13 @@ export default function CalendarApp() {
         event={eventModal.event}
         defaultDate={eventModal.date}
         onClose={closeEventModal}
-       onSave={(event) => {
-  if ('id' in event) {
-    updateEvent(event)
-  } else {
-    addEvent(event)
-  }
-}}
-
+        onSave={(event) => {
+          if ("id" in event) {
+            updateEvent(event)
+          } else {
+            addEvent(event)
+          }
+        }}
         onDelete={
           eventModal.event
             ? () => {
